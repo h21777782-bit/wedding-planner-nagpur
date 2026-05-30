@@ -9,10 +9,14 @@ import requests as http_requests
 import datetime
 import calendar as cal_lib
 import time
+import re
 from urllib.parse import quote
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import textwrap
+
+def _strip_emoji(text: str) -> str:
+    return re.sub(r'[^\x00-\x7Fऀ-ॿÀ-ɏ\s\.,!?:;\'\"\-\(\)#@&%]', '', text).strip()
 
 st.set_page_config(
     page_title="Wedding Carousel Generator · Nagpur",
@@ -159,21 +163,28 @@ def generate_slides_content(claude_key: str, topic: str, num_slides: int, tone: 
         "Warm & Emotional":    "heartfelt, touching, family-oriented",
     }
     client = anthropic.Anthropic(api_key=claude_key)
-    prompt = f"""You are a social media content creator for WeddingEventPlanner Nagpur, a premium Indian wedding planning company.
+    prompt = f"""You are a social media content creator for WeddingEventPlanner Nagpur, a premium Indian wedding planning company based in Nagpur, Maharashtra.
 
 Create a {num_slides}-slide carousel post for {platform} about: "{topic}"
 Tone: {tone} ({tone_map.get(tone, '')})
 
+IMPORTANT LANGUAGE RULE: Write ALL content in HINGLISH — Hindi words written in English script, mixed naturally with English. Examples:
+- "Aapki shaadi ka sapna, humara kaam hai!"
+- "Nagpur ki sabse premium wedding planning service"
+- "Har detail perfect honi chahiye — from mandap to mehendi!"
+- "Apna dream wedding plan karo aaj hi"
+This is how urban Indians actually speak and write on Instagram. NOT pure English, NOT pure Hindi.
+
 Return a JSON object with:
 - "slides": array of {num_slides} objects, each with:
   - "slide_number": int
-  - "hook": attention-grabbing opening line (only slide 1, empty string otherwise) — e.g. "Did you know...?" or "The secret to..." or a bold statement
-  - "title": short punchy heading (max 8 words)
-  - "body": 2-3 engaging lines of content
-  - "image_prompt": vivid visual description for AI image generation — focus ONLY on Indian wedding DECOR: floral arrangements, mandap, venue, table settings, lighting, flowers, fabric draping. NO people, NO humans, NO couples. Specific colors, textures, mood.
-  - "cta": call-to-action line (only last slide, empty string otherwise) — e.g. "DM us to book your dream wedding 💍" or "Save this post for inspiration!"
-- "caption": Instagram/Facebook caption with 3-4 emojis, starting with a strong hook line
-- "hashtags": array of exactly 15 hashtag strings (no # symbol)
+  - "hook": attention-grabbing Hinglish opening line (only slide 1, empty string otherwise) — e.g. "Kya aapki shaadi perfect hogi?" or "Ye secret abhi tak kisi ne nahi bataya!"
+  - "title": short punchy Hinglish heading (max 8 words) — NO emojis in title
+  - "body": 2-3 engaging Hinglish lines — NO emojis in body text
+  - "image_prompt": vivid visual description in English for AI image generation — focus ONLY on Indian wedding DECOR: floral arrangements, mandap, venue, table settings, lighting, flowers, fabric draping. NO people, NO humans, NO couples. Specific colors, textures, mood.
+  - "cta": Hinglish call-to-action (only last slide, empty string otherwise) — e.g. "Abhi DM karo apni dream wedding book karne ke liye!" or "Save karo aur apni family ko tag karo!"
+- "caption": Hinglish Instagram caption with 3-4 emojis, starting with a strong hook line
+- "hashtags": array of exactly 15 hashtag strings — mix of Hindi, English, Nagpur-specific (no # symbol)
 
 Return ONLY valid JSON, nothing else."""
 
@@ -298,13 +309,13 @@ def add_text_overlay(image_bytes: bytes, title: str, body: str, slide_num: int, 
     draw.text((W - 120, 32), f" {slide_num} / {total} ", font=font_badge, fill=(255, 255, 255, 230))
 
     # Title
-    for line in textwrap.wrap(title, width=22):
+    for line in textwrap.wrap(_strip_emoji(title), width=22):
         draw.text((pad, text_y), line, font=font_title, fill=(255, 255, 255, 255))
         text_y += 88
     text_y += 10
 
     # Body
-    for line in textwrap.wrap(body, width=38)[:3]:
+    for line in textwrap.wrap(_strip_emoji(body), width=38)[:3]:
         draw.text((pad, text_y), line, font=font_body, fill=(235, 235, 235, 220))
         text_y += 52
 
@@ -367,7 +378,9 @@ def post_to_instagram(access_token, ig_user_id, image_urls, caption, scheduled_t
                 raise Exception(f"HTTP {r.status_code}: {r.text[:300]}")
 
     ids = []
-    for url in image_urls:
+    for idx, url in enumerate(image_urls):
+        if idx > 0:
+            time.sleep(2)   # avoid rate limit between uploads
         r = http_requests.post(f"{base}/{ig_user_id}/media",
                                data={"image_url": url, "is_carousel_item": "true", "access_token": access_token},
                                timeout=30)
