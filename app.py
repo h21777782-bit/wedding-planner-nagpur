@@ -166,11 +166,12 @@ Tone: {tone} ({tone_map.get(tone, '')})
 Return a JSON object with:
 - "slides": array of {num_slides} objects, each with:
   - "slide_number": int
+  - "hook": attention-grabbing opening line (only slide 1, empty string otherwise) — e.g. "Did you know...?" or "The secret to..." or a bold statement
   - "title": short punchy heading (max 8 words)
   - "body": 2-3 engaging lines of content
   - "image_prompt": vivid visual description for AI image generation — focus ONLY on Indian wedding DECOR: floral arrangements, mandap, venue, table settings, lighting, flowers, fabric draping. NO people, NO humans, NO couples. Specific colors, textures, mood.
-  - "cta": call-to-action line (only last slide, empty string otherwise)
-- "caption": Instagram/Facebook caption with 3-4 emojis
+  - "cta": call-to-action line (only last slide, empty string otherwise) — e.g. "DM us to book your dream wedding 💍" or "Save this post for inspiration!"
+- "caption": Instagram/Facebook caption with 3-4 emojis, starting with a strong hook line
 - "hashtags": array of exactly 15 hashtag strings (no # symbol)
 
 Return ONLY valid JSON, nothing else."""
@@ -588,12 +589,15 @@ with col_output:
                         🖼️ Step 2 ke baad image aayegi
                     </div>""", unsafe_allow_html=True)
 
+                hook_html = f"<div style='font-family:Lato,sans-serif;font-size:0.82rem;font-weight:700;color:#C2185B;background:rgba(194,24,91,0.08);border-radius:8px;padding:6px 12px;margin-bottom:8px;letter-spacing:0.5px;'>🎯 HOOK: {slide.get('hook','')}</div>" if slide.get('hook') else ""
+                cta_html  = f"<div style='font-family:Lato,sans-serif;font-size:0.85rem;font-weight:700;color:#fff;background:linear-gradient(135deg,#8B0000,#C2185B);border-radius:8px;padding:8px 14px;margin-top:10px;text-align:center;'>📣 {slide.get('cta','')}</div>" if slide.get('cta') else ""
                 st.markdown(f"""
                 <div class="slide-preview">
                     <div class="slide-num">Slide {snum}</div>
+                    {hook_html}
                     <div class="slide-title">{slide.get('title','')}</div>
                     <div class="slide-body">{slide.get('body','')}</div>
-                    {"<div class='slide-cta'>"+slide.get('cta','')+"</div>" if slide.get('cta') else ""}
+                    {cta_html}
                 </div>""", unsafe_allow_html=True)
 
         # Caption & Hashtags — always visible below carousel
