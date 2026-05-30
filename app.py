@@ -168,7 +168,7 @@ Return a JSON object with:
   - "slide_number": int
   - "title": short punchy heading (max 8 words)
   - "body": 2-3 engaging lines of content
-  - "image_prompt": vivid visual description for AI image generation — real Indian wedding scene, specific colors, decor, mood
+  - "image_prompt": vivid visual description for AI image generation — focus ONLY on Indian wedding DECOR: floral arrangements, mandap, venue, table settings, lighting, flowers, fabric draping. NO people, NO humans, NO couples. Specific colors, textures, mood.
   - "cta": call-to-action line (only last slide, empty string otherwise)
 - "caption": Instagram/Facebook caption with 3-4 emojis
 - "hashtags": array of exactly 15 hashtag strings (no # symbol)
@@ -196,11 +196,12 @@ Return ONLY valid JSON, nothing else."""
 def generate_image_together(together_key: str, prompt: str) -> bytes:
     """Together AI — FLUX.1-schnell-Free — 100% free, no cost per image."""
     full = (
-        f"Ultra-realistic professional DSLR photograph: {prompt}. "
-        "Real Indian wedding couple, photorealistic human faces, natural skin tones, "
-        "photojournalistic style, sharp focus, natural golden hour lighting, "
-        "Canon EOS R5, 85mm f/1.4 lens, shallow depth of field, vibrant authentic colors, "
-        "no text, no watermarks, hyperrealistic."
+        f"Ultra-realistic professional wedding photography: {prompt}. "
+        "Luxurious Indian wedding decor, stunning floral arrangements, marigold and rose decorations, "
+        "grand mandap setup, royal venue interior, elegant table settings, beautiful lighting, "
+        "NO people, NO humans, NO faces, NO couples — only decor and venue, "
+        "golden hour warm light, Canon EOS R5, 85mm f/1.4 lens, shallow depth of field, "
+        "vibrant rich colors, no text, no watermarks, hyperrealistic 8K."
     )
     resp = http_requests.post(
         "https://api.together.xyz/v1/images/generations",
@@ -217,11 +218,12 @@ def generate_image_openai(openai_key: str, prompt: str, quality: str = "low") ->
     """OpenAI gpt-image-1. quality: low (~$0.011) | medium (~$0.042) | high (~$0.167)"""
     client = openai.OpenAI(api_key=openai_key)
     full = (
-        f"Ultra-realistic professional DSLR photograph: {prompt}. "
-        "Real Indian wedding couple with photorealistic human faces, natural skin tones, "
-        "photojournalistic style, sharp focus, natural golden hour lighting, "
-        "Canon EOS R5, 85mm f/1.4 lens, shallow depth of field, vibrant authentic colors, "
-        "NO text, NO watermarks, NO illustration, hyperrealistic."
+        f"Ultra-realistic professional wedding photography: {prompt}. "
+        "Luxurious Indian wedding decor, stunning floral arrangements, marigold and rose decorations, "
+        "grand mandap setup, royal venue interior, elegant table settings, beautiful lighting, "
+        "NO people, NO humans, NO faces, NO couples — only decor and venue, "
+        "golden hour warm light, Canon EOS R5, 85mm f/1.4 lens, shallow depth of field, "
+        "vibrant rich colors, NO text, NO watermarks, NO illustration, hyperrealistic 8K."
     )
     resp = client.images.generate(
         model="gpt-image-1", prompt=full,
@@ -251,49 +253,69 @@ def add_text_overlay(image_bytes: bytes, title: str, body: str, slide_num: int, 
     draw = ImageDraw.Draw(img)
 
     def load_font(size, bold=False):
-        for fp in [
-            f"C:/Windows/Fonts/{'arialbd' if bold else 'arial'}.ttf",
-            f"C:/Windows/Fonts/{'calibrib' if bold else 'calibri'}.ttf",
-            f"C:/Windows/Fonts/{'seguisb' if bold else 'segoeui'}.ttf",
-        ]:
+        candidates = (
+            [
+                "C:/Windows/Fonts/arialbd.ttf",
+                "C:/Windows/Fonts/calibrib.ttf",
+                "C:/Windows/Fonts/seguisb.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+                "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf",
+                "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+                "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
+            ] if bold else [
+                "C:/Windows/Fonts/arial.ttf",
+                "C:/Windows/Fonts/calibri.ttf",
+                "C:/Windows/Fonts/segoeui.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+                "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+                "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+            ]
+        )
+        for fp in candidates:
             try:
                 return ImageFont.truetype(fp, size)
             except Exception:
                 pass
-        return ImageFont.load_default()
+        try:
+            return ImageFont.load_default(size=size)
+        except Exception:
+            return ImageFont.load_default()
 
-    font_title  = load_font(56, bold=True)
-    font_body   = load_font(30)
-    font_badge  = load_font(24)
-    font_handle = load_font(26, bold=True)
+    font_title  = load_font(76, bold=True)
+    font_body   = load_font(40)
+    font_badge  = load_font(32)
+    font_handle = load_font(34, bold=True)
 
-    pad, text_y = 54, int(H * 0.52)
+    pad, text_y = 60, int(H * 0.48)
 
     # Slide counter badge — top right
-    draw.rounded_rectangle([(W - 112, 26), (W - 26, 62)], radius=18, fill=(0, 0, 0, 150))
-    draw.text((W - 102, 30), f" {slide_num} / {total} ", font=font_badge, fill=(255, 255, 255, 220))
+    draw.rounded_rectangle([(W - 130, 28), (W - 24, 72)], radius=20, fill=(0, 0, 0, 160))
+    draw.text((W - 120, 32), f" {slide_num} / {total} ", font=font_badge, fill=(255, 255, 255, 230))
 
     # Title
-    for line in textwrap.wrap(title, width=26):
+    for line in textwrap.wrap(title, width=22):
         draw.text((pad, text_y), line, font=font_title, fill=(255, 255, 255, 255))
-        text_y += 68
-    text_y += 8
+        text_y += 88
+    text_y += 10
 
     # Body
-    for line in textwrap.wrap(body, width=46)[:3]:
-        draw.text((pad, text_y), line, font=font_body, fill=(230, 230, 230, 215))
-        text_y += 42
+    for line in textwrap.wrap(body, width=38)[:3]:
+        draw.text((pad, text_y), line, font=font_body, fill=(235, 235, 235, 220))
+        text_y += 52
 
     # Instagram handle — bottom RIGHT corner
     handle_bbox = draw.textbbox((0, 0), INSTA_HANDLE, font=font_handle)
     handle_w = handle_bbox[2] - handle_bbox[0]
     handle_x = W - handle_w - pad
-    handle_y = H - 54
+    handle_y = H - 62
     draw.rounded_rectangle(
-        [(handle_x - 14, handle_y - 7), (handle_x + handle_w + 14, handle_y + 37)],
-        radius=18, fill=(0, 0, 0, 160),
+        [(handle_x - 16, handle_y - 8), (handle_x + handle_w + 16, handle_y + 42)],
+        radius=20, fill=(0, 0, 0, 170),
     )
-    draw.text((handle_x, handle_y), INSTA_HANDLE, font=font_handle, fill=(255, 255, 255, 230))
+    draw.text((handle_x, handle_y), INSTA_HANDLE, font=font_handle, fill=(255, 255, 255, 240))
 
     buf = BytesIO()
     img.convert("RGB").save(buf, format="PNG")
