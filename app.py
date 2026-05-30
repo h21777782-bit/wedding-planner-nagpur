@@ -8,6 +8,7 @@ import concurrent.futures
 import requests as http_requests
 import datetime
 import calendar as cal_lib
+import time
 from urllib.parse import quote
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
@@ -352,12 +353,25 @@ def upload_to_imgbb(imgbb_key: str, img_bytes: bytes) -> str:
 
 def post_to_instagram(access_token, ig_user_id, image_urls, caption, scheduled_ts=None):
     base = "https://graph.facebook.com/v19.0"
+
+    def _check(r):
+        if not r.ok:
+            try:
+                err = r.json().get("error", {})
+                msg = err.get("message", r.text)
+                code = err.get("code", r.status_code)
+                raise Exception(f"Instagram API Error {code}: {msg}")
+            except Exception as e:
+                if "Instagram API Error" in str(e):
+                    raise
+                raise Exception(f"HTTP {r.status_code}: {r.text[:300]}")
+
     ids = []
     for url in image_urls:
         r = http_requests.post(f"{base}/{ig_user_id}/media",
                                data={"image_url": url, "is_carousel_item": "true", "access_token": access_token},
                                timeout=30)
-        r.raise_for_status()
+        _check(r)
         ids.append(r.json()["id"])
 
     payload = {"media_type": "CAROUSEL", "children": ",".join(ids),
@@ -367,14 +381,31 @@ def post_to_instagram(access_token, ig_user_id, image_urls, caption, scheduled_t
         payload["published"] = "false"
 
     r = http_requests.post(f"{base}/{ig_user_id}/media", data=payload, timeout=30)
-    r.raise_for_status()
+    _check(r)
     carousel_id = r.json()["id"]
 
     if not scheduled_ts:
+        # Wait for Instagram to process the container before publishing
+        time.sleep(3)
+        # Check container status before publishing
+        for attempt in range(5):
+            status_r = http_requests.get(
+                f"{base}/{carousel_id}",
+                params={"fields": "status_code,status", "access_token": access_token},
+                timeout=15,
+            )
+            if status_r.ok:
+                status_code = status_r.json().get("status_code", "")
+                if status_code == "FINISHED":
+                    break
+                elif status_code == "ERROR":
+                    raise Exception(f"Instagram container error: {status_r.json().get('status', 'unknown')}")
+            time.sleep(3)
+
         r = http_requests.post(f"{base}/{ig_user_id}/media_publish",
                                data={"creation_id": carousel_id, "access_token": access_token},
                                timeout=30)
-        r.raise_for_status()
+        _check(r)
         return r.json()
     return {"id": carousel_id, "scheduled": True}
 
