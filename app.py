@@ -168,23 +168,22 @@ def generate_slides_content(claude_key: str, topic: str, num_slides: int, tone: 
 Create a {num_slides}-slide carousel post for {platform} about: "{topic}"
 Tone: {tone} ({tone_map.get(tone, '')})
 
-IMPORTANT LANGUAGE RULE: Write ALL content in HINGLISH — Hindi words written in English script, mixed naturally with English. Examples:
-- "Aapki shaadi ka sapna, humara kaam hai!"
-- "Nagpur ki sabse premium wedding planning service"
-- "Har detail perfect honi chahiye — from mandap to mehendi!"
-- "Apna dream wedding plan karo aaj hi"
-This is how urban Indians actually speak and write on Instagram. NOT pure English, NOT pure Hindi.
-
 Return a JSON object with:
 - "slides": array of {num_slides} objects, each with:
   - "slide_number": int
-  - "hook": attention-grabbing Hinglish opening line (only slide 1, empty string otherwise) — e.g. "Kya aapki shaadi perfect hogi?" or "Ye secret abhi tak kisi ne nahi bataya!"
-  - "title": short punchy Hinglish heading (max 8 words) — NO emojis in title
-  - "body": 2-3 engaging Hinglish lines — NO emojis in body text
-  - "image_prompt": vivid visual description in English for AI image generation — focus ONLY on Indian wedding DECOR: floral arrangements, mandap, venue, table settings, lighting, flowers, fabric draping. NO people, NO humans, NO couples. Specific colors, textures, mood.
-  - "cta": Hinglish call-to-action (only last slide, empty string otherwise) — e.g. "Abhi DM karo apni dream wedding book karne ke liye!" or "Save karo aur apni family ko tag karo!"
-- "caption": Hinglish Instagram caption with 3-4 emojis, starting with a strong hook line
-- "hashtags": array of exactly 15 hashtag strings — mix of Hindi, English, Nagpur-specific (no # symbol)
+  - "hook": attention-grabbing opening line (only slide 1, empty string otherwise) — e.g. "Did you know...?" or "The secret to a perfect wedding is..." — NO emojis, max 12 words, COMPLETE sentence
+  - "title": short punchy heading (max 7 words) — NO emojis, COMPLETE words only, no mid-word cuts
+  - "body": exactly 2 short complete sentences about the topic — each sentence MUST be fully written, no cutting off mid-sentence — NO emojis — keep each sentence under 12 words
+  - "image_prompt": vivid visual description for AI image generation — focus ONLY on Indian wedding DECOR: floral arrangements, mandap, venue, table settings, lighting, flowers, fabric draping. NO people, NO humans, NO couples. Specific colors, textures, mood.
+  - "cta": call-to-action line (only last slide, empty string otherwise) — e.g. "DM us to plan your dream wedding!" or "Save this for wedding inspiration!" — NO emojis, COMPLETE sentence
+- "caption": Instagram caption with 3-4 emojis, starting with a strong hook line
+- "hashtags": array of exactly 15 hashtag strings — mix of wedding, Nagpur, Indian wedding tags (no # symbol)
+
+STRICT RULES — follow these exactly:
+1. NEVER mention years of experience, number of weddings done, "trusted by X families", "500+ clients" or any fake credibility numbers — this is a growing business
+2. Instead focus on: what we offer, why it matters, tips, ideas, inspiration
+3. Every sentence must be COMPLETE — never cut off mid-thought
+4. Body text must fit in 2 short sentences only
 
 Return ONLY valid JSON, nothing else."""
 
@@ -315,9 +314,12 @@ def add_text_overlay(image_bytes: bytes, title: str, body: str, slide_num: int, 
     text_y += 10
 
     # Body
-    for line in textwrap.wrap(_strip_emoji(body), width=38)[:3]:
-        draw.text((pad, text_y), line, font=font_body, fill=(235, 235, 235, 220))
-        text_y += 52
+    body_clean = _strip_emoji(body)
+    body_lines = textwrap.wrap(body_clean, width=42)[:4]
+    for line in body_lines:
+        if text_y + 52 < H - 80:   # don't overflow below handle
+            draw.text((pad, text_y), line, font=font_body, fill=(235, 235, 235, 220))
+            text_y += 52
 
     # Instagram handle — bottom RIGHT corner
     handle_bbox = draw.textbbox((0, 0), INSTA_HANDLE, font=font_handle)
